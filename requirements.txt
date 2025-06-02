@@ -1,0 +1,14 @@
+pandas>=1.0.0
+numpy>=1.18.0
+matplotlib>=3.1.0
+scikit-learn>=0.22.0
+seaborn>=0.10.0
+xgboost>=1.0.0
+paddlepaddle==2.3.2
+scipy>=1.4.0
+imbalanced-learn>=0.7.0
+shap>=0.39.0
+# 批次效应校正库(选择一个)
+pycombat
+# 或者使用
+# neuroCombat
