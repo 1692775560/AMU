@@ -1,6 +1,6 @@
 """
-批次效应校正和PCA分析
-按照审稿人2的建议实现批次效应校正
+Batch Effect Correction and PCA Analysis
+Implementing batch effect correction as suggested by Reviewer 2
 """
 import pandas as pd
 import numpy as np
@@ -10,44 +10,44 @@ from sklearn.preprocessing import StandardScaler
 import seaborn as sns
 import scipy.stats as stats
 
-# 导入需要的Python包 - 需要安装combat-pytorch或者pycombat
-# 导入pycombat库
+# Import required Python packages - need to install combat-pytorch or pycombat
+# Import pycombat library
 try:
     import pycombat
     
     def apply_combat(data, batch):
-        # 使用pycombat进行批次校正
-        # pycombat API可能会有不同的用法
+        # Use pycombat for batch correction
+        # pycombat API may have different usage
         try:
             corrected_data = pycombat.pycombat(data, batch)
             return corrected_data
         except (TypeError, AttributeError):
-            # 如果pycombat模块结构不同，尝试其他方式
+            # If pycombat module structure is different, try other methods
             print("Using alternative method for batch correction...")
-            # 简单的替代方法：对每个批次的数据进行标准化
+            # Simple alternative method: standardize data for each batch
             corrected = data.copy()
             unique_batches = np.unique(batch)
             
-            # 对每个批次进行标准化
+            # Standardize each batch
             for b in unique_batches:
                 idx = np.where(batch == b)[0]
                 batch_data = data[idx]
-                # 计算均值和标准差
+                # Calculate mean and standard deviation
                 batch_mean = np.mean(batch_data, axis=0)
-                batch_std = np.std(batch_data, axis=0) + 1e-8  # 防止除以0
+                batch_std = np.std(batch_data, axis=0) + 1e-8  # Prevent division by zero
                 
-                # 标准化
+                # Standardize
                 corrected[idx] = (batch_data - batch_mean) / batch_std
             
             return corrected
         
 except ImportError:
     try:
-        # 尝试导入neuroCombat
+        # Try to import neuroCombat
         import neuroCombat as combat
         
         def apply_combat(data, batch):
-            # 使用neuroCombat进行批次校正
+            # Use neuroCombat for batch correction
             covars = pd.DataFrame({'batch': batch})
             categorical_cols = ['batch']
             continuous_cols = []
@@ -62,41 +62,41 @@ except ImportError:
     except ImportError:
         print("Please install batch correction library: pip install pycombat or pip install neuroCombat")
         
-        # 定义一个简单的替代函数，以便脚本至少能运行
+        # Define a simple alternative function so the script can at least run
         def apply_combat(data, batch):
             print("Warning: Batch correction library not found, returning original data")
             return data
         
 def perform_pca_analysis(data, labels, title="PCA of Gene Expression Data", figsize=(10, 8), save_path=None):
     """
-    执行PCA分析并可视化结果
+    Perform PCA analysis and visualize results
     
-    参数:
-    - data: 基因表达数据矩阵 (样本 x 基因)
-    - labels: 样本批次或类别标签
-    - title: 图表标题
-    - figsize: 图表大小
-    - save_path: 保存路径，如果不为None则保存图片
+    Parameters:
+    - data: Gene expression data matrix (samples x genes)
+    - labels: Sample batch or category labels
+    - title: Chart title
+    - figsize: Chart size
+    - save_path: Save path, if not None, save the image
     """
-    # 标准化数据
+    # Standardize data
     scaler = StandardScaler()
     scaled_data = scaler.fit_transform(data)
     
-    # 执行PCA
+    # Perform PCA
     pca = PCA(n_components=2)
     pca_result = pca.fit_transform(scaled_data)
     
-    # 创建结果DataFrame
+    # Create result DataFrame
     pca_df = pd.DataFrame(
         data=pca_result,
         columns=['PC1', 'PC2']
     )
     pca_df['Batch'] = labels
     
-    # 计算解释方差比例
+    # Calculate explained variance ratio
     explained_variance = pca.explained_variance_ratio_ * 100
     
-    # 可视化
+    # Visualization
     plt.figure(figsize=figsize)
     sns.scatterplot(
         x='PC1', 
@@ -114,11 +114,11 @@ def perform_pca_analysis(data, labels, title="PCA of Gene Expression Data", figs
     plt.legend(title='Data Source', title_fontsize=12, fontsize=10)
     plt.grid(True, linestyle='--', alpha=0.7)
     
-    # 添加统计分析 - 多变量方差分析(MANOVA)来检测组间差异
+    # Add statistical analysis - Multivariate ANOVA (MANOVA) to detect inter-group differences
     groups = [pca_result[labels == label] for label in np.unique(labels)]
     if len(groups) > 1 and all(len(g) > 1 for g in groups):
         try:
-            stat, p = stats.f_oneway(*[g[:, 0] for g in groups])  # 分析PC1
+            stat, p = stats.f_oneway(*[g[:, 0] for g in groups])  # Analyze PC1
             plt.figtext(0.01, 0.01, f'PC1 ANOVA: p={p:.4f}', fontsize=9)
         except:
             pass
@@ -132,65 +132,65 @@ def perform_pca_analysis(data, labels, title="PCA of Gene Expression Data", figs
 
 def batch_correction_pipeline(data_files, batch_labels, gene_columns=None, sample_id_column=None):
     """
-    完整的批次校正流程
+    Complete batch correction pipeline
     
-    参数:
-    - data_files: 数据文件路径列表
-    - batch_labels: 对应每个文件的批次标签
-    - gene_columns: 基因列名(如果为None则使用所有数值列)
-    - sample_id_column: 样本ID列名
+    Parameters:
+    - data_files: List of data file paths
+    - batch_labels: Batch labels corresponding to each file
+    - gene_columns: Gene column names (if None, use all numeric columns)
+    - sample_id_column: Sample ID column name
     
-    返回:
-    - 原始合并数据
-    - 校正后数据
+    Returns:
+    - Original merged data
+    - Corrected data
     """
-    # 1. 加载并合并数据
+    # 1. Load and merge data
     all_data = []
     all_batches = []
     
     for i, file_path in enumerate(data_files):
-        # 根据文件类型加载数据
+        # Load data based on file type
         if file_path.endswith('.csv'):
             df = pd.read_csv(file_path)
         elif file_path.endswith('.tsv'):
             df = pd.read_csv(file_path, sep='\t')
         else:
-            print(f"不支持的文件类型: {file_path}")
+            print(f"Unsupported file type: {file_path}")
             continue
         
-        # 添加批次信息
+        # Add batch information
         batch = batch_labels[i]
         df['batch'] = batch
         
-        # 提取特征列
+        # Extract feature columns
         if gene_columns is None:
-            # 使用所有数值列作为基因表达量
+            # Use all numeric columns as gene expression values
             feature_cols = df.select_dtypes(include=['float64', 'float32', 'int64', 'int32']).columns
-            # 排除batch列
+            # Exclude batch column
             feature_cols = [col for col in feature_cols if col != 'batch']
         else:
             feature_cols = gene_columns
         
-        # 存储样本ID
+        # Store sample IDs
         if sample_id_column and sample_id_column in df.columns:
             sample_ids = df[sample_id_column].values
         else:
             sample_ids = [f"Sample_{batch}_{j}" for j in range(len(df))]
         
-        # 提取表达矩阵
+        # Extract expression matrix
         expression_data = df[feature_cols].values
         
-        # 批次标签
+        # Batch labels
         batch_labels_arr = np.array([batch] * len(df))
         
         all_data.append(expression_data)
         all_batches.extend(batch_labels_arr)
     
-    # 合并所有数据
+    # Merge all data
     combined_data = np.vstack(all_data)
     batch_array = np.array(all_batches)
     
-    # 2. 在校正前进行PCA分析
+    # 2. Perform PCA analysis before correction
     perform_pca_analysis(
         combined_data, 
         batch_array, 
@@ -198,10 +198,10 @@ def batch_correction_pipeline(data_files, batch_labels, gene_columns=None, sampl
         save_path="pca_before_correction.png"
     )
     
-    # 3. 应用Combat进行批次校正
+    # 3. Apply Combat for batch correction
     corrected_data = apply_combat(combined_data, batch_array)
     
-    # 4. 校正后再次进行PCA分析
+    # 4. Perform PCA analysis again after correction
     perform_pca_analysis(
         corrected_data, 
         batch_array, 
@@ -209,16 +209,16 @@ def batch_correction_pipeline(data_files, batch_labels, gene_columns=None, sampl
         save_path="pca_after_correction.png"
     )
     
-    # 5. 返回原始和校正后的数据
+    # 5. Return original and corrected data
     return combined_data, corrected_data, batch_array, feature_cols
 
-# 示例使用
+# Example usage
 if __name__ == "__main__":
-    # 实际使用时请替换为您的数据文件路径
+    # Please replace with your actual data file paths when using
     data_files = ['logfourupsample.csv', 'four.csv']
     batch_labels = ['Dataset1', 'Dataset2']
     
-    # 执行批次校正流程
+    # Execute batch correction pipeline
     original_data, corrected_data, batches, features = batch_correction_pipeline(
         data_files, batch_labels
     )
@@ -226,7 +226,7 @@ if __name__ == "__main__":
     print(f"Original data shape: {original_data.shape}")
     print(f"Corrected data shape: {corrected_data.shape}")
     
-    # 保存校正后的数据
+    # Save corrected data
     corrected_df = pd.DataFrame(corrected_data, columns=features)
     corrected_df['batch'] = batches
     corrected_df.to_csv('batch_corrected_data.csv', index=False)

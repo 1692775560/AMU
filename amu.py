@@ -34,7 +34,7 @@ train_params={'lr_rate':0.00001,
 
 ### ----------- ### 
 data=pd.read_csv('logfourupsample.csv',sep=',')
-# 整理数据集，拆分测试集训练集
+# Organize dataset, split test and training sets
 x, y = data.iloc[:, :-1], data.iloc[:,-1]
 train_x, test_x, train_y, test_y = \
     ms.train_test_split(x, y, test_size=0.2, random_state=1000)
@@ -46,7 +46,7 @@ for i in range(data_np.shape[0]):
     label_np=data_np[i, -1].astype('int64')
     selfdata.append([input_np,label_np])
 testdata=selfdata
-# 自定义DL数据集
+# Custom DL dataset
 class MyDataset(Dataset):
     def __init__(self,mode='train'):
         super(MyDataset, self).__init__()
@@ -68,31 +68,31 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
-# 读取数据（假设有两个数据集）
+# Read data (assuming two datasets)
 data1=pd.read_csv('logfourupsample.csv',sep=',')
 
-data2 = pd.read_csv('four.csv')  # 第二个数据集（这里用同一个文件示例）
+data2 = pd.read_csv('four.csv')  # Second dataset (using same file as example here)
 from matplotlib.colors import ListedColormap
 custom_cmap1 = ListedColormap(sns.color_palette("coolwarm", 100))
 custom_cmap2 = ListedColormap(sns.color_palette("viridis", 100))
-# 设置绘图风格
-sns.set(style="whitegrid", font_scale=1.2)  # 使用白色网格背景，并调整字体大小
+# Set plotting style
+sns.set(style="whitegrid", font_scale=1.2)  # Use white grid background and adjust font size
 plt.style.use('seaborn')
 
-# 创建画布和子图
-fig, axes = plt.subplots(1, 2, figsize=(30, 15))  # 1行2列，并排显示
+# Create canvas and subplots
+fig, axes = plt.subplots(1, 2, figsize=(30, 15))  # 1 row, 2 columns, side by side display
 
-# 绘制第一张热力图
+# Draw first heatmap
 sns.heatmap(
     data1,
-    cmap="mako",  # 使用高级颜色映射
+    cmap="mako",  # Use advanced color mapping
     annot=False,
     fmt=".2f",
     linewidths=0.5,
-    linecolor='lightgray',  # 网格线颜色
+    linecolor='lightgray',  # Grid line color
     cbar_kws={"shrink": 0.8, "label": "Expression Level"},
     square=True,
-    ax=axes[0]  # 指定绘制在第一个子图
+    ax=axes[0]  # Specify drawing in first subplot
 )
 axes[0].set_title('Heatmap 1: Gene Expression', fontsize=20, pad=20, fontweight='bold')
 axes[0].set_xlabel('Genes', fontsize=15, labelpad=15, fontweight='bold')
@@ -100,7 +100,7 @@ axes[0].set_ylabel('Samples', fontsize=15, labelpad=15, fontweight='bold')
 axes[0].set_xticklabels(axes[0].get_xticklabels(), rotation=90, fontsize=10, horizontalalignment='center')
 axes[0].set_yticklabels(axes[0].get_yticklabels(), rotation=0, fontsize=10)
 
-# 隐藏部分标签（每隔5个显示一个）
+# Hide some labels (show one every 5)
 for i, label in enumerate(axes[0].get_xticklabels()):
     if i % 5 != 0:
         label.set_visible(False)
@@ -108,32 +108,32 @@ for i, label in enumerate(axes[0].get_yticklabels()):
     if i % 5 != 0:
         label.set_visible(False)
 
-# 调整颜色条
+# Adjust color bar
 cbar1 = axes[0].collections[0].colorbar
 cbar1.ax.tick_params(labelsize=12)
 cbar1.set_label('Expression Level', fontsize=14, rotation=270, labelpad=20, fontweight='bold')
 
-# 添加注释（可选）
+# Add annotation (optional)
 axes[0].annotate(
-    'Important Region',  # 注释文本
-    xy=(10, 5),          # 箭头指向的位置
-    xytext=(15, 10),     # 文本位置
-    arrowprops=dict(facecolor='red', shrink=0.05),  # 箭头样式
+    'Important Region',  # Annotation text
+    xy=(10, 5),          # Position where arrow points
+    xytext=(15, 10),     # Text position
+    arrowprops=dict(facecolor='red', shrink=0.05),  # Arrow style
     fontsize=12,
     color='red'
 )
 
-# 绘制第二张热力图
+# Draw second heatmap
 sns.heatmap(
     data2,
-    cmap="rocket",  # 使用不同的高级颜色映射
+    cmap="rocket",  # Use different advanced color mapping
     annot=False,
     fmt=".2f",
     linewidths=0.5,
-    linecolor='lightgray',  # 网格线颜色
+    linecolor='lightgray',  # Grid line color
     cbar_kws={"shrink": 0.8, "label": "Expression Level"},
     square=True,
-    ax=axes[1]  # 指定绘制在第二个子图
+    ax=axes[1]  # Specify drawing in second subplot
 )
 axes[1].set_title('Heatmap 2: Gene Expression', fontsize=20, pad=20, fontweight='bold')
 axes[1].set_xlabel('Genes', fontsize=15, labelpad=15, fontweight='bold')
@@ -141,7 +141,7 @@ axes[1].set_ylabel('Samples', fontsize=15, labelpad=15, fontweight='bold')
 axes[1].set_xticklabels(axes[1].get_xticklabels(), rotation=90, fontsize=10, horizontalalignment='center')
 axes[1].set_yticklabels(axes[1].get_yticklabels(), rotation=0, fontsize=10)
 
-# 隐藏部分标签（每隔5个显示一个）
+# Hide some labels (show one every 5)
 for i, label in enumerate(axes[1].get_xticklabels()):
     if i % 5 != 0:
         label.set_visible(False)
@@ -149,28 +149,27 @@ for i, label in enumerate(axes[1].get_yticklabels()):
     if i % 5 != 0:
         label.set_visible(False)
 
-# 调整颜色条
+# Adjust color bar
 cbar2 = axes[1].collections[0].colorbar
 cbar2.ax.tick_params(labelsize=12)
 cbar2.set_label('Expression Level', fontsize=14, rotation=270, labelpad=20, fontweight='bold')
 
-# 添加注释（可选）
+# Add annotation (optional)
 axes[1].annotate(
-    'Key Cluster',  # 注释文本
-    xy=(20, 15),    # 箭头指向的位置
-    xytext=(25, 20),# 文本位置
-    arrowprops=dict(facecolor='blue', shrink=0.05),  # 箭头样式
+    'Key Cluster',  # Annotation text
+    xy=(20, 15),    # Position where arrow points
     fontsize=12,
     color='blue'
 )
 
-# 调整布局
+# Adjust layout to avoid overlap
 plt.tight_layout()
 
-# 保存图形（可选）
+# Save the figure (optional)
 plt.savefig('combined_heatmaps_beautified.png', dpi=300, bbox_inches='tight')
 
-# 显示图形
+{{ ... }}
+# Display figure
 plt.show()
 
 
@@ -180,10 +179,10 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-# 读取数据（假设有两个数据集）
-# 读取数据
+# Read data (assuming two datasets)
+# Read data
 data1 = pd.read_csv('logfourupsample.csv',sep=',')
-data2 = pd.read_csv('four.csv')  # 第二个数据集（这里用同一个文件示例）
+data2 = pd.read_csv('four.csv')  # Second dataset (using same file as example here)
 
 
 
@@ -245,17 +244,17 @@ class Atten_model(nn.Layer):
         x = self.linear1(x)  # [20]
         x = self.softmax(x)
         return x
-#建模
+#Modeling
 atten_model = Atten_model()
 attenmodel=paddle.Model(atten_model)
 opt=paddle.optimizer.Adam(learning_rate=train_params['lr_rate'],parameters=attenmodel.parameters(),
                 weight_decay=L2Decay(0.0001))
-# 不加载预训练参数，直接训练模型
-print("使用随机初始化参数开始训练AMU模型...")
+# Do not load pre-trained parameters, train model directly
+print("Starting AMU model training with random initialization parameters...")
 
-# 添加保存模型的代码
-# 在训练完成后可以使用以下代码保存模型
-# attenmodel.save('test02-04')  # 取消注释此行来保存模型
+# Add code to save model
+# After training completion, use the following code to save model
+# attenmodel.save('test02-04')  # Uncomment this line to save model
 
 
 #------#
@@ -295,12 +294,12 @@ class CnnModel(nn.Layer):
         return x
 cnnmodel=CnnModel()
 cnnmodel=paddle.Model(cnnmodel)
-# 不加载预训练参数，直接训练模型
-print("使用随机初始化参数开始训练CNN模型...")
+# Do not load pre-trained parameters, train model directly
+print("Starting CNN model training with random initialization parameters...")
 
-# 添加保存模型的代码
-# 在训练完成后可以使用以下代码保存模型
-# cnnmodel.save('1851')  # 取消注释此行来保存模型
+# Add code to save model
+# After training completion, use the following code to save model
+# cnnmodel.save('1851')  # Uncomment this line to save model
 
 
 
@@ -330,7 +329,7 @@ def calculate_auc(y_test, pred):
     plt.plot([0, 1], [0, 1], 'k--')
     plt.show()
     
-#使用Yooden法寻找最佳阈值
+#Use Youden method to find optimal threshold
 def Find_Optimal_Cutoff(TPR, FPR, threshold):
     y = TPR - FPR
     Youden_index = np.argmax(y)  # Only the first occurrence is returned.
@@ -338,14 +337,14 @@ def Find_Optimal_Cutoff(TPR, FPR, threshold):
     point = [FPR[Youden_index], TPR[Youden_index]]
     return optimal_threshold, point
  
-#计算roc值
+#Calculate ROC value
 def ROC(label, y_prob):
     fpr, tpr, thresholds = roc_curve(label, y_prob)
     roc_auc = auc(fpr, tpr)
     optimal_threshold, optimal_point = Find_Optimal_Cutoff(TPR=tpr, FPR=fpr, threshold=thresholds)
     return fpr, tpr, roc_auc, optimal_threshold, optimal_point
  
-#计算混淆矩阵
+#Calculate confusion matrix
 def calculate_metric(label, y_prob,optimal_threshold):
     p=[]
     for i in y_prob:
@@ -365,7 +364,7 @@ def calculate_metric(label, y_prob,optimal_threshold):
     return Accuracy,Sensitivity,Specificity
 
 #---------#
-#循环训练模型
+#Loop training models
 results=[]
 roc_=[]
 for name,model in models:
@@ -394,48 +393,49 @@ for name,model in cnn_models:
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# 假设 results 和 roc_ 已经定义
+# Assume results and roc_ are already defined
 df_result = pd.DataFrame(results)
 df_result.columns = ["Optimal_threshold", "Accuracy", "Sensitivity", "Specificity", "AUC_ROC", "Model_name"]
 
-# 设置颜色和线宽
+# Set colors and line width
 colors = ["moccasin", "cornflowerblue", "lightblue", "lightgreen", "yellow", "pink"]
 lw = 2
 
-# 创建图形
+# Create figure
 plt.figure(figsize=(10, 10))
 
-# 绘制 ROC 曲线
+# Plot ROC curves
 for i in range(len(roc_)):
     plt.plot(roc_[i][0], roc_[i][1], color=colors[i], lw=lw, 
              label=f'{roc_[i][3]} (AUC = {roc_[i][2]:0.3f})')
 
-# 绘制对角线
+# Plot diagonal line
 plt.plot([0, 1], [0, 1], color='black', lw=lw, linestyle='--', label='Random Guess')
 
-# 设置图形属性
+# Set figure properties
 plt.xlim([0.0, 1.0])
 plt.ylim([0.0, 1.05])
 plt.xlabel('False Positive Rate (1 - Specificity)', fontsize=18, labelpad=10)
 plt.ylabel('True Positive Rate (Sensitivity)', fontsize=18, labelpad=10)
 plt.title('ROC Curve', fontsize=20, pad=20)
 
-# 设置刻度字体大小
+# Set tick font size
 plt.xticks(fontsize=14)
 plt.yticks(fontsize=14)
 
-# 设置图例
+# Set legend
 plt.legend(loc="lower right", fontsize=14, frameon=True, shadow=True, edgecolor='black')
 
-# 保存图形
+# Save figure
 plt.savefig("roc_curve.png", dpi=300, bbox_inches='tight')
 
-# 显示图形
+# Display figure
 plt.show()
 
 #---------#
 df_result=pd.DataFrame(results)
 df_result.columns=["Optimal_threshold","Accuracy","Sensitivity","Specificity","AUC_ROC","Model_name"]
+{{ ... }}
 color=["moccasin","cornflowerblue","lightblue","lightgreen","yellow","pink"]
 plt.figure()
 plt.figure(figsize=(10,10))
@@ -460,7 +460,7 @@ plt.show()
 #---------#
 # for randomstate in range(10000):
 data=pd.read_csv('logfourupsample.csv',sep=',')
-# 整理数据集，拆分测试集训练集
+# Organize dataset, split test and training sets
 x, y = data.iloc[:, :-1], data.iloc[:,-1]
 train_x, test_x, train_y, test_y = \
     ms.train_test_split(x, y, test_size=0.2, random_state=41)
@@ -472,7 +472,7 @@ for i in range(data_np.shape[0]):
     label_np=data_np[i, -1].astype('int64')
     selfdata.append([input_np,label_np])
 testdata=selfdata
-# 自定义数据集
+# Custom dataset
 class MyDataset(Dataset):
     def __init__(self,mode='train'):
         super(MyDataset, self).__init__()
@@ -587,7 +587,7 @@ for i in range(6):
     print(model_list[i],average_precision_list[i][micro_key])
 
 #---------#
-#读取外部测试集数据
+#Read external test set data
 postdata=pd.read_csv('GSE91061_lognormTPM_post.csv',sep=',')
 postdata=np.array(postdata).astype('float32')
 preddata=[]
@@ -595,7 +595,7 @@ for i in range(postdata.shape[0]):
     input_np=postdata[i, :-1].reshape([-1,160])
     label_np=postdata[i, -1].astype('int64')
     preddata.append([input_np,label_np])
-# 自定义数据集
+# Custom dataset
 class MyDataset(Dataset):
     def __init__(self,mode='train'):
         super(MyDataset, self).__init__()
@@ -721,7 +721,7 @@ for name,model in cnn_models:
     roc_.append([fpr,tpr,roc_auc,name])
 df_result=pd.DataFrame(results)
 df_result.columns=["Optimal_threshold","Accuracy","Sensitivity","Specificity","AUC_ROC","Model_name"]
- #绘制多组对比roc曲线
+ #Plot multi-group comparison ROC curves
 color=["moccasin","cornflowerblue","lightblue","lightgreen","yellow","pink"]
 plt.figure()
 plt.figure(figsize=(10,10))

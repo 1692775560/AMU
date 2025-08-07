@@ -1,6 +1,6 @@
 """
-AMU模型精确实现与评估
-使用与用户提供的完全相同的AMU模型代码
+AMU Model Exact Implementation and Evaluation
+Using exactly the same AMU model code as provided by the user
 """
 import pandas as pd
 import numpy as np
@@ -13,33 +13,33 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 from paddle.regularizer import L2Decay
 
-print("开始加载数据...")
-# 加载数据
+print("Starting to load data...")
+# Load data
 try:
     data = pd.read_csv('logfourupsample.csv')
-    print(f"成功加载数据，形状: {data.shape}")
+    print(f"Successfully loaded data, shape: {data.shape}")
 except Exception as e:
-    print(f"加载数据时出错: {e}")
+    print(f"Error loading data: {e}")
     exit(1)
 
-# 分离特征和标签
+# Separate features and labels
 if 'target' in data.columns:
     X, y = data.iloc[:, :-1], data.iloc[:, -1]
 else:
-    # 假设最后一列是标签
+    # Assume the last column is the label
     X, y = data.iloc[:, :-1], data.iloc[:, -1]
 
-print(f"特征形状: {X.shape}, 标签形状: {y.shape}")
-print(f"标签分布: {y.value_counts().to_dict()}")
+print(f"Feature shape: {X.shape}, Label shape: {y.shape}")
+print(f"Label distribution: {y.value_counts().to_dict()}")
 
-# 划分训练集和测试集
+# Split training and test sets
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 
-print(f"训练集形状: {X_train.shape}, 测试集形状: {X_test.shape}")
+print(f"Training set shape: {X_train.shape}, Test set shape: {X_test.shape}")
 
-# ------------ 完全按照用户提供的代码实现AMU模型 ------------
+# ------------ Implement AMU model exactly as provided by user ------------
 class Atten_model(nn.Layer):
     def __init__(self):
         super(Atten_model, self).__init__()  # [-1,1,160]
@@ -98,7 +98,7 @@ class Atten_model(nn.Layer):
         x = self.softmax(x)
         return x
 
-# 创建数据集
+# Create dataset
 class SimpleDataset(paddle.io.Dataset):
     def __init__(self, features, labels=None):
         self.features = features
@@ -114,14 +114,14 @@ class SimpleDataset(paddle.io.Dataset):
     def __len__(self):
         return len(self.features)
 
-print("准备数据集...")
-# 转换数据为Paddle张量
+print("Preparing dataset...")
+# Convert data to Paddle tensors
 train_features = paddle.to_tensor(X_train.values.astype('float32'))
 train_labels = paddle.to_tensor(y_train.values.astype('int64'))
 test_features = paddle.to_tensor(X_test.values.astype('float32'))
 test_labels = paddle.to_tensor(y_test.values.astype('int64'))
 
-# 创建数据加载器
+# Create data loaders
 batch_size = 32
 train_dataset = SimpleDataset(train_features, train_labels)
 train_loader = paddle.io.DataLoader(
@@ -137,13 +137,13 @@ test_loader = paddle.io.DataLoader(
     shuffle=False
 )
 
-# 创建模型实例
-print("创建AMU模型...")
+# Create model instance
+print("Creating AMU model...")
 model = Atten_model()
 
-# 训练参数 - 使用较高的学习率以加速收敛
+# Training parameters - use higher learning rate to accelerate convergence
 learning_rate = 0.0001
-print(f"使用学习率: {learning_rate}")
+print(f"Using learning rate: {learning_rate}")
 optimizer = paddle.optimizer.Adam(
     learning_rate=learning_rate,
     parameters=model.parameters(),
@@ -151,19 +151,19 @@ optimizer = paddle.optimizer.Adam(
 )
 loss_fn = nn.CrossEntropyLoss()
 
-# 验证模型架构
-print("模型架构:")
+# Validate model architecture
+print("Model architecture:")
 model_params = 0
 for name, param in model.named_parameters():
     print(f"  - {name}: {param.shape}")
     model_params += np.prod(param.shape)
-print(f"模型总参数数量: {model_params:,}")
+print(f"Total model parameters: {model_params:,}")
 
-# 训练模型
+# Train model
 epochs = 100
-print(f"开始训练AMU模型，训练轮数: {epochs}")
+print(f"Starting AMU model training, epochs: {epochs}")
 
-# 训练与评估函数
+# Training and evaluation function
 def evaluate_model(model, data_loader):
     model.eval()
     all_preds = []
@@ -179,13 +179,13 @@ def evaluate_model(model, data_loader):
             all_preds.extend(preds.numpy())
             all_labels.extend(y.numpy())
     
-    # 计算指标
+    # Calculate metrics
     acc = accuracy_score(all_labels, all_preds)
     cm = confusion_matrix(all_labels, all_preds)
     
     return acc, cm
 
-# 训练循环
+# Training loop
 for epoch in range(epochs):
     model.train()
     total_loss = 0
@@ -194,11 +194,11 @@ for epoch in range(epochs):
     for batch_id, data in enumerate(train_loader()):
         x_data, y_data = data
         
-        # 前向传播
+        # Forward propagation
         logits = model(x_data)
         loss = loss_fn(logits, y_data)
         
-        # 反向传播
+        # Backward propagation
         loss.backward()
         optimizer.step()
         optimizer.clear_grad()
@@ -206,10 +206,10 @@ for epoch in range(epochs):
         total_loss += float(loss)
         batch_count += 1
     
-    # 每个epoch结束后评估
+    # Evaluate after each epoch
     avg_loss = total_loss / batch_count
     
-    # 每5个epoch或最后一个epoch评估一次测试集
+    # Evaluate test set every 5 epochs or last epoch
     if (epoch + 1) % 5 == 0 or epoch == epochs - 1:
         train_acc, train_cm = evaluate_model(model, train_loader)
         test_acc, test_cm = evaluate_model(model, test_loader)
@@ -219,22 +219,22 @@ for epoch in range(epochs):
     else:
         print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
 
-# 最终评估
+# Final evaluation
 train_acc, train_cm = evaluate_model(model, train_loader)
 test_acc, test_cm = evaluate_model(model, test_loader)
 
-print("\n训练完成!")
-print(f"最终训练集准确率: {train_acc:.4f}")
-print(f"最终测试集准确率: {test_acc:.4f}")
-print(f"训练集混淆矩阵:\n{train_cm}")
-print(f"测试集混淆矩阵:\n{test_cm}")
+print("\nTraining completed!")
+print(f"Final training accuracy: {train_acc:.4f}")
+print(f"Final test accuracy: {test_acc:.4f}")
+print(f"Training confusion matrix:\n{train_cm}")
+print(f"Test confusion matrix:\n{test_cm}")
 
-# 保存模型
+# Save model
 try:
     paddle_model = paddle.Model(model)
     paddle_model.save('amu_exact_model')
-    print("模型已保存为 amu_exact_model")
+    print("Model saved as amu_exact_model")
 except Exception as e:
-    print(f"保存模型时出错: {e}")
+    print(f"Error saving model: {e}")
 
-print("\nAMU模型评估完成!")
+print("\nAMU model evaluation completed!")

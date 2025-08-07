@@ -1,6 +1,6 @@
 """
-AMU模型评估脚本 - 使用原始数据加载方式
-完全按照用户提供的原始代码实现
+AMU Model Evaluation Script - Using Original Data Loading Method
+Implemented exactly according to the original code provided by the user
 """
 import pandas as pd
 import numpy as np
@@ -14,23 +14,23 @@ import paddle.nn.functional as F
 from paddle.regularizer import L2Decay
 from paddle.io import Dataset, DataLoader
 
-# ------------ 完全按照用户提供的代码实现数据加载 ------------
-print("开始加载数据...")
+# ------------ Implement data loading exactly according to user-provided code ------------
+print("Starting data loading...")
 try:
-    # 原始路径是'data/data156006/logfourupsample.csv'，但我们已修改为本地路径
+    # Original path was 'data/data156006/logfourupsample.csv', but we've changed it to local path
     data = pd.read_csv('logfourupsample.csv', sep=',')
-    print(f"成功加载数据，形状: {data.shape}")
+    print(f"Successfully loaded data, shape: {data.shape}")
 except Exception as e:
-    print(f"加载数据时出错: {e}")
+    print(f"Error loading data: {e}")
     exit(1)
 
-# 整理数据集，拆分测试集训练集，使用原始的随机种子1000
+# Organize dataset, split test and training sets, using original random seed 1000
 x, y = data.iloc[:, :-1], data.iloc[:, -1]
 train_x, test_x, train_y, test_y = ms_train_test_split(x, y, test_size=0.2, random_state=1000)
-print(f"训练集形状: {train_x.shape}, 测试集形状: {test_x.shape}")
-print(f"标签分布 - 训练集: {train_y.value_counts().to_dict()}, 测试集: {test_y.value_counts().to_dict()}")
+print(f"Training set shape: {train_x.shape}, Test set shape: {test_x.shape}")
+print(f"Label distribution - Training set: {train_y.value_counts().to_dict()}, Test set: {test_y.value_counts().to_dict()}")
 
-# 准备测试数据集，完全按照原始代码
+# Prepare test dataset, exactly according to original code
 testdata = pd.concat([test_x, test_y], axis=1)
 data_np = np.array(testdata).astype('float32')
 selfdata = []
@@ -40,7 +40,7 @@ for i in range(data_np.shape[0]):
     selfdata.append([input_np, label_np])
 testdata = selfdata
 
-# 自定义DL数据集 - 与原始代码完全一致
+# Custom DL dataset - completely consistent with original code
 class MyDataset(Dataset):
     def __init__(self, mode='train'):
         super(MyDataset, self).__init__()
@@ -55,11 +55,11 @@ class MyDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
-# 创建测试数据集
+# Create test dataset
 test_data = MyDataset(mode='test')
 test_loader = DataLoader(test_data, batch_size=32, shuffle=False)
 
-# 为训练集准备类似的处理
+# Prepare similar processing for training set
 train_data = pd.concat([train_x, train_y], axis=1)
 train_np = np.array(train_data).astype('float32')
 train_selfdata = []
@@ -68,7 +68,7 @@ for i in range(train_np.shape[0]):
     label_np = train_np[i, -1].astype('int64')
     train_selfdata.append([input_np, label_np])
 
-# 扩展MyDataset类以支持训练模式
+# Extend MyDataset class to support training mode
 class ExtendedDataset(Dataset):
     def __init__(self, train_data=None, test_data=None, mode='train'):
         super(ExtendedDataset, self).__init__()
@@ -86,11 +86,11 @@ class ExtendedDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
-# 创建训练数据集
+# Create training dataset
 train_dataset = ExtendedDataset(train_data=train_selfdata, mode='train')
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 
-# ------------ 完全按照用户提供的代码实现AMU模型 ------------
+# ------------ Implement AMU model exactly according to user-provided code ------------
 class Atten_model(nn.Layer):
     def __init__(self):
         super(Atten_model, self).__init__()  # [-1,1,160]
@@ -149,13 +149,13 @@ class Atten_model(nn.Layer):
         x = self.softmax(x)
         return x
 
-# 创建模型实例
-print("创建AMU模型...")
+# Create model instance
+print("Creating AMU model...")
 model = Atten_model()
 
-# 训练参数 - 使用较高的学习率以加速收敛
+# Training parameters - use higher learning rate to accelerate convergence
 learning_rate = 0.0001
-print(f"使用学习率: {learning_rate}")
+print(f"Using learning rate: {learning_rate}")
 optimizer = paddle.optimizer.Adam(
     learning_rate=learning_rate,
     parameters=model.parameters(),
@@ -163,15 +163,15 @@ optimizer = paddle.optimizer.Adam(
 )
 loss_fn = nn.CrossEntropyLoss()
 
-# 验证模型架构
-print("模型架构:")
+# Verify model architecture
+print("Model architecture:")
 model_params = 0
 for name, param in model.named_parameters():
     print(f"  - {name}: {param.shape}")
     model_params += np.prod(param.shape)
-print(f"模型总参数数量: {model_params:,}")
+print(f"Total model parameters: {model_params:,}")
 
-# 训练与评估函数
+# Training and evaluation function
 def evaluate_model(model, data_loader):
     model.eval()
     all_preds = []
@@ -187,7 +187,7 @@ def evaluate_model(model, data_loader):
             all_preds.extend(preds.numpy())
             all_labels.extend(y.numpy())
     
-    # 计算指标
+    # Calculate metrics
     acc = accuracy_score(all_labels, all_preds)
     cm = confusion_matrix(all_labels, all_preds)
     prec = precision_score(all_labels, all_preds, zero_division=0)
@@ -202,11 +202,11 @@ def evaluate_model(model, data_loader):
         'confusion_matrix': cm
     }
 
-# 训练模型
+# Train model
 epochs = 100
-print(f"开始训练AMU模型，训练轮数: {epochs}")
+print(f"Starting AMU model training, number of epochs: {epochs}")
 
-# 训练循环
+# Training loop
 for epoch in range(epochs):
     model.train()
     total_loss = 0
@@ -215,11 +215,11 @@ for epoch in range(epochs):
     for batch_id, data in enumerate(train_loader):
         x_data, y_data = data
         
-        # 前向传播
+        # Forward pass
         logits = model(x_data)
         loss = loss_fn(logits, y_data)
         
-        # 反向传播
+        # Backward pass
         loss.backward()
         optimizer.step()
         optimizer.clear_grad()
@@ -227,49 +227,49 @@ for epoch in range(epochs):
         total_loss += float(loss)
         batch_count += 1
     
-    # 每个epoch结束后评估
+    # Evaluate after each epoch
     avg_loss = total_loss / batch_count
     
-    # 每10个epoch或最后一个epoch评估一次测试集
+    # Evaluate test set every 10 epochs or last epoch
     if (epoch + 1) % 10 == 0 or epoch == epochs - 1:
-        # 评估训练集
+        # Evaluate training set
         train_metrics = evaluate_model(model, train_loader)
-        # 评估测试集
+        # Evaluate test set
         test_metrics = evaluate_model(model, test_loader)
         
         print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
-        print(f"  训练集 - 准确率: {train_metrics['accuracy']:.4f}, 精确率: {train_metrics['precision']:.4f}, 召回率: {train_metrics['recall']:.4f}, F1: {train_metrics['f1']:.4f}")
-        print(f"  测试集 - 准确率: {test_metrics['accuracy']:.4f}, 精确率: {test_metrics['precision']:.4f}, 召回率: {test_metrics['recall']:.4f}, F1: {test_metrics['f1']:.4f}")
-        print(f"  训练集混淆矩阵:\n{train_metrics['confusion_matrix']}")
-        print(f"  测试集混淆矩阵:\n{test_metrics['confusion_matrix']}")
+        print(f"  Training set - Accuracy: {train_metrics['accuracy']:.4f}, Precision: {train_metrics['precision']:.4f}, Recall: {train_metrics['recall']:.4f}, F1: {train_metrics['f1']:.4f}")
+        print(f"  Test set - Accuracy: {test_metrics['accuracy']:.4f}, Precision: {test_metrics['precision']:.4f}, Recall: {test_metrics['recall']:.4f}, F1: {test_metrics['f1']:.4f}")
+        print(f"  Training set confusion matrix:\n{train_metrics['confusion_matrix']}")
+        print(f"  Test set confusion matrix:\n{test_metrics['confusion_matrix']}")
     else:
         print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
 
-# 最终评估
+# Final evaluation
 final_train_metrics = evaluate_model(model, train_loader)
 final_test_metrics = evaluate_model(model, test_loader)
 
-print("\n训练完成!")
-print(f"最终训练集指标:")
-print(f"  准确率: {final_train_metrics['accuracy']:.4f}")
-print(f"  精确率: {final_train_metrics['precision']:.4f}")
-print(f"  召回率: {final_train_metrics['recall']:.4f}")
-print(f"  F1分数: {final_train_metrics['f1']:.4f}")
-print(f"  混淆矩阵:\n{final_train_metrics['confusion_matrix']}")
+print("\nTraining completed!")
+print(f"Final training set metrics:")
+print(f"  Accuracy: {final_train_metrics['accuracy']:.4f}")
+print(f"  Precision: {final_train_metrics['precision']:.4f}")
+print(f"  Recall: {final_train_metrics['recall']:.4f}")
+print(f"  F1 score: {final_train_metrics['f1']:.4f}")
+print(f"  Confusion matrix:\n{final_train_metrics['confusion_matrix']}")
 
-print(f"\n最终测试集指标:")
-print(f"  准确率: {final_test_metrics['accuracy']:.4f}")
-print(f"  精确率: {final_test_metrics['precision']:.4f}")
-print(f"  召回率: {final_test_metrics['recall']:.4f}")
-print(f"  F1分数: {final_test_metrics['f1']:.4f}")
-print(f"  混淆矩阵:\n{final_test_metrics['confusion_matrix']}")
+print(f"\nFinal test set metrics:")
+print(f"  Accuracy: {final_test_metrics['accuracy']:.4f}")
+print(f"  Precision: {final_test_metrics['precision']:.4f}")
+print(f"  Recall: {final_test_metrics['recall']:.4f}")
+print(f"  F1 score: {final_test_metrics['f1']:.4f}")
+print(f"  Confusion matrix:\n{final_test_metrics['confusion_matrix']}")
 
-# 保存模型
+# Save model
 try:
     paddle_model = paddle.Model(model)
     paddle_model.save('amu_original_model')
-    print("模型已保存为 amu_original_model")
+    print("Model saved as amu_original_model")
 except Exception as e:
-    print(f"保存模型时出错: {e}")
+    print(f"Error saving model: {e}")
 
-print("\nAMU模型评估完成!")
+print("\nAMU model evaluation completed!")

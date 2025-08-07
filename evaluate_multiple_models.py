@@ -1,6 +1,6 @@
 """
-多模型评估脚本 - 使用相同的数据加载方式评估多个模型
-包括AMU模型和CNN模型
+Multi-model evaluation script - Evaluate multiple models using the same data loading approach
+Includes AMU model and CNN model
 """
 import pandas as pd
 import numpy as np
@@ -17,25 +17,25 @@ from paddle.io import Dataset, DataLoader
 import time
 import os
 
-# 创建结果目录
+# Create results directory
 os.makedirs('model_results', exist_ok=True)
 
-# ------------ 按照用户提供的代码实现数据加载 ------------
-print("开始加载数据...")
+# ------------ Data loading implementation as provided by user ------------
+print("Starting data loading...")
 try:
     data = pd.read_csv('logfourupsample.csv', sep=',')
-    print(f"成功加载数据，形状: {data.shape}")
+    print(f"Successfully loaded data, shape: {data.shape}")
 except Exception as e:
-    print(f"加载数据时出错: {e}")
+    print(f"Error loading data: {e}")
     exit(1)
 
-# 整理数据集，拆分测试集训练集，使用原始的随机种子1000
+# Organize dataset, split into test and training sets, using original random seed 1000
 x, y = data.iloc[:, :-1], data.iloc[:, -1]
 train_x, test_x, train_y, test_y = ms_train_test_split(x, y, test_size=0.2, random_state=1000)
-print(f"训练集形状: {train_x.shape}, 测试集形状: {test_x.shape}")
-print(f"标签分布 - 训练集: {train_y.value_counts().to_dict()}, 测试集: {test_y.value_counts().to_dict()}")
+print(f"Training set shape: {train_x.shape}, Test set shape: {test_x.shape}")
+print(f"Label distribution - Training set: {train_y.value_counts().to_dict()}, Test set: {test_y.value_counts().to_dict()}")
 
-# 准备测试数据集
+# Prepare test dataset
 testdata = pd.concat([test_x, test_y], axis=1)
 data_np = np.array(testdata).astype('float32')
 selfdata = []
@@ -45,7 +45,7 @@ for i in range(data_np.shape[0]):
     selfdata.append([input_np, label_np])
 testdata = selfdata
 
-# 为训练集准备类似的处理
+# Prepare similar processing for training set
 train_data = pd.concat([train_x, train_y], axis=1)
 train_np = np.array(train_data).astype('float32')
 train_selfdata = []
@@ -54,7 +54,7 @@ for i in range(train_np.shape[0]):
     label_np = train_np[i, -1].astype('int64')
     train_selfdata.append([input_np, label_np])
 
-# 自定义数据集类
+# Custom dataset class
 class CustomDataset(Dataset):
     def __init__(self, data_list, mode='train'):
         super(CustomDataset, self).__init__()
@@ -69,17 +69,17 @@ class CustomDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
-# 创建训练和测试数据集
+# Create training and test datasets
 train_dataset = CustomDataset(train_selfdata, mode='train')
 test_dataset = CustomDataset(selfdata, mode='test')
 
-# 创建数据加载器
+# Create data loaders
 batch_size = 32
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-# ------------ 模型定义 ------------
-# 1. AMU模型定义
+# ------------ Model definitions ------------
+# 1. AMU model definition
 class Atten_model(nn.Layer):
     def __init__(self):
         super(Atten_model, self).__init__()  # [-1,1,160]
@@ -138,7 +138,7 @@ class Atten_model(nn.Layer):
         x = self.softmax(x)
         return x
 
-# 2. CNN模型定义
+# 2. CNN model definition
 class CNN_model(nn.Layer):
     def __init__(self):
         super(CNN_model, self).__init__()
@@ -154,8 +154,8 @@ class CNN_model(nn.Layer):
         self.fc2 = nn.Linear(128, 2)
         
     def forward(self, x):
-        # CNN模型期望输入形状为 [batch_size, channels, seq_len]
-        # 当前输入为 [batch_size, seq_len]，需要增加一个通道维度
+        # CNN model expects input shape [batch_size, channels, seq_len]
+        # Current input is [batch_size, seq_len], need to add a channel dimension
         x = x.unsqueeze(1)  # [batch_size, 1, 160]
         
         x = F.relu(self.conv1(x))
@@ -171,7 +171,7 @@ class CNN_model(nn.Layer):
         x = F.softmax(x, axis=1)
         return x
 
-# 3. MLP模型定义
+# 3. MLP model definition
 class MLP_model(nn.Layer):
     def __init__(self):
         super(MLP_model, self).__init__()
@@ -194,24 +194,24 @@ class MLP_model(nn.Layer):
         x = F.softmax(x, axis=1)
         return x
 
-# ------------ 训练与评估函数 ------------
+# ------------ Training and evaluation functions ------------
 def train_model(model, model_name, train_loader, test_loader, epochs=100, learning_rate=0.0001, weight_decay=0.0001):
     """
-    训练模型并记录训练过程
+    Train model and record training process
     """
-    print(f"\n开始训练 {model_name} 模型...")
+    print(f"\nStarting training {model_name} model...")
     
-    # 初始化优化器
+    # Initialize optimizer
     optimizer = paddle.optimizer.Adam(
         learning_rate=learning_rate,
         parameters=model.parameters(),
         weight_decay=L2Decay(weight_decay)
     )
     
-    # 损失函数
+    # Loss function
     loss_fn = nn.CrossEntropyLoss()
     
-    # 记录训练历史
+    # Record training history
     history = {
         'train_loss': [],
         'train_acc': [],
@@ -224,7 +224,7 @@ def train_model(model, model_name, train_loader, test_loader, epochs=100, learni
         'test_f1': []
     }
     
-    # 训练循环
+    # Training loop
     start_time = time.time()
     for epoch in range(epochs):
         model.train()
@@ -234,11 +234,11 @@ def train_model(model, model_name, train_loader, test_loader, epochs=100, learni
         for batch_id, data in enumerate(train_loader):
             x_data, y_data = data
             
-            # 前向传播
+            # Forward pass
             logits = model(x_data)
             loss = loss_fn(logits, y_data)
             
-            # 反向传播
+            # Backward pass
             loss.backward()
             optimizer.step()
             optimizer.clear_grad()
@@ -246,18 +246,18 @@ def train_model(model, model_name, train_loader, test_loader, epochs=100, learni
             total_loss += float(loss)
             batch_count += 1
         
-        # 计算平均损失
+        # Calculate average loss
         avg_loss = total_loss / batch_count
         history['train_loss'].append(avg_loss)
         
-        # 每10个epoch或最后一个epoch评估一次
+        # Evaluate every 10 epochs or on the last epoch
         if (epoch + 1) % 10 == 0 or epoch == epochs - 1:
-            # 评估训练集
+            # Evaluate training set
             train_metrics = evaluate_model(model, train_loader)
-            # 评估测试集
+            # Evaluate test set
             test_metrics = evaluate_model(model, test_loader)
             
-            # 记录指标
+            # Record metrics
             history['train_acc'].append(train_metrics['accuracy'])
             history['test_acc'].append(test_metrics['accuracy'])
             history['train_precision'].append(train_metrics['precision'])
@@ -268,33 +268,33 @@ def train_model(model, model_name, train_loader, test_loader, epochs=100, learni
             history['test_f1'].append(test_metrics['f1'])
             
             print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
-            print(f"  训练集 - 准确率: {train_metrics['accuracy']:.4f}, 精确率: {train_metrics['precision']:.4f}, 召回率: {train_metrics['recall']:.4f}, F1: {train_metrics['f1']:.4f}")
-            print(f"  测试集 - 准确率: {test_metrics['accuracy']:.4f}, 精确率: {test_metrics['precision']:.4f}, 召回率: {test_metrics['recall']:.4f}, F1: {test_metrics['f1']:.4f}")
-            print(f"  训练集混淆矩阵:\n{train_metrics['confusion_matrix']}")
-            print(f"  测试集混淆矩阵:\n{test_metrics['confusion_matrix']}")
+            print(f"  Training set - Accuracy: {train_metrics['accuracy']:.4f}, Precision: {train_metrics['precision']:.4f}, Recall: {train_metrics['recall']:.4f}, F1: {train_metrics['f1']:.4f}")
+            print(f"  Test set - Accuracy: {test_metrics['accuracy']:.4f}, Precision: {test_metrics['precision']:.4f}, Recall: {test_metrics['recall']:.4f}, F1: {test_metrics['f1']:.4f}")
+            print(f"  Training set confusion matrix:\n{train_metrics['confusion_matrix']}")
+            print(f"  Test set confusion matrix:\n{test_metrics['confusion_matrix']}")
         else:
             print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
     
-    # 训练时间
+    # Training time
     training_time = time.time() - start_time
-    print(f"{model_name} 模型训练完成! 训练时间: {training_time:.2f} 秒")
+    print(f"{model_name} model training completed! Training time: {training_time:.2f} seconds")
     
-    # 最终评估
+    # Final evaluation
     final_train_metrics = evaluate_model(model, train_loader)
     final_test_metrics = evaluate_model(model, test_loader)
     
-    # 计算ROC和PR曲线
+    # Calculate ROC and PR curves
     test_labels, test_preds, test_probs = get_predictions(model, test_loader)
     
-    # 计算ROC曲线数据
+    # Calculate ROC curve data
     fpr, tpr, _ = roc_curve(test_labels, test_probs[:, 1])
     roc_auc = auc(fpr, tpr)
     
-    # 计算PR曲线数据
+    # Calculate PR curve data
     precision, recall, _ = precision_recall_curve(test_labels, test_probs[:, 1])
     pr_auc = auc(recall, precision)
     
-    # 绘制并保存ROC曲线
+    # Plot and save ROC curve
     plt.figure(figsize=(10, 8))
     plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
     plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
@@ -306,7 +306,7 @@ def train_model(model, model_name, train_loader, test_loader, epochs=100, learni
     plt.legend(loc='lower right')
     plt.savefig(f'model_results/{model_name}_roc_curve.png')
     
-    # 绘制并保存PR曲线
+    # Plot and save PR curve
     plt.figure(figsize=(10, 8))
     plt.plot(recall, precision, color='blue', lw=2, label=f'PR curve (area = {pr_auc:.2f})')
     plt.xlabel('Recall')
@@ -315,10 +315,10 @@ def train_model(model, model_name, train_loader, test_loader, epochs=100, learni
     plt.legend(loc='lower left')
     plt.savefig(f'model_results/{model_name}_pr_curve.png')
     
-    # 绘制训练历史
+    # Plot training history
     plt.figure(figsize=(12, 10))
     
-    # 绘制损失
+    # Plot loss
     plt.subplot(2, 2, 1)
     plt.plot(history['train_loss'], label='Training Loss')
     plt.title('Training Loss')
@@ -326,7 +326,7 @@ def train_model(model, model_name, train_loader, test_loader, epochs=100, learni
     plt.ylabel('Loss')
     plt.legend()
     
-    # 绘制准确率
+    # Plot accuracy
     plt.subplot(2, 2, 2)
     plt.plot(range(0, epochs, 10), history['train_acc'], label='Training Accuracy')
     plt.plot(range(0, epochs, 10), history['test_acc'], label='Testing Accuracy')
@@ -377,7 +377,7 @@ def train_model(model, model_name, train_loader, test_loader, epochs=100, learni
 
 def evaluate_model(model, data_loader):
     """
-    评估模型性能
+    Evaluate model performance
     """
     model.eval()
     all_preds = []
@@ -410,7 +410,7 @@ def evaluate_model(model, data_loader):
 
 def get_predictions(model, data_loader):
     """
-    获取模型的预测结果、真实标签和预测概率
+    Get model predictions, true labels, and prediction probabilities
     """
     model.eval()
     all_preds = []
@@ -430,27 +430,27 @@ def get_predictions(model, data_loader):
     
     return np.array(all_labels), np.array(all_preds), np.array(all_probs)
 
-# ------------ 主函数：训练和评估多个模型 ------------
+# ------------ Main function: Train and evaluate multiple models ------------
 def main():
-    print("开始评估多个模型...")
+    print("Starting evaluation of multiple models...")
     
     # 存储所有模型的结果
     all_results = {}
     
-    # 定义模型列表
+    # Define model list
     models = {
         'AMU': Atten_model(),
         'CNN': CNN_model(),
         'MLP': MLP_model()
     }
     
-    # 训练和评估每个模型
+    # Train and evaluate each model
     for model_name, model in models.items():
         print(f"\n{'='*50}")
-        print(f"训练和评估 {model_name} 模型")
+        print(f"Training and evaluating {model_name} model")
         print(f"{'='*50}")
         
-        # 训练模型
+        # Train model
         metrics, history = train_model(
             model=model,
             model_name=model_name,
@@ -460,47 +460,47 @@ def main():
             learning_rate=0.0001
         )
         
-        # 存储结果
+        # Store results
         all_results[model_name] = {
             'metrics': metrics,
             'history': history
         }
         
-        # 输出模型性能
-        print(f"\n{model_name} 模型最终性能:")
-        print(f"训练集准确率: {metrics['train']['accuracy']:.4f}")
-        print(f"测试集准确率: {metrics['test']['accuracy']:.4f}")
-        print(f"测试集精确率: {metrics['test']['precision']:.4f}")
-        print(f"测试集召回率: {metrics['test']['recall']:.4f}")
-        print(f"测试集F1分数: {metrics['test']['f1']:.4f}")
+        # Output model performance
+        print(f"\n{model_name} model final performance:")
+        print(f"Training set accuracy: {metrics['train']['accuracy']:.4f}")
+        print(f"Test set accuracy: {metrics['test']['accuracy']:.4f}")
+        print(f"Test set precision: {metrics['test']['precision']:.4f}")
+        print(f"Test set recall: {metrics['test']['recall']:.4f}")
+        print(f"Test set F1 score: {metrics['test']['f1']:.4f}")
         print(f"ROC AUC: {metrics['roc_auc']:.4f}")
         print(f"PR AUC: {metrics['pr_auc']:.4f}")
-        print(f"训练时间: {metrics['training_time']:.2f} 秒")
+        print(f"Training time: {metrics['training_time']:.2f} seconds")
     
-    # 比较所有模型的性能
-    print("\n所有模型性能比较:")
+    # Compare performance of all models
+    print("\nAll models performance comparison:")
     print("="*80)
-    print(f"{'模型名称':<10}{'训练准确率':<12}{'测试准确率':<12}{'精确率':<10}{'召回率':<10}{'F1分数':<10}{'ROC AUC':<10}{'PR AUC':<10}{'训练时间(秒)':<15}")
+    print(f"{'Model Name':<12}{'Train Acc':<12}{'Test Acc':<12}{'Precision':<12}{'Recall':<10}{'F1 Score':<10}{'ROC AUC':<10}{'PR AUC':<10}{'Train Time(s)':<15}")
     print("-"*80)
     
     for model_name, result in all_results.items():
         metrics = result['metrics']
-        print(f"{model_name:<10}{metrics['train']['accuracy']:.4f}{'      '}{metrics['test']['accuracy']:.4f}{'      '}{metrics['test']['precision']:.4f}{'    '}{metrics['test']['recall']:.4f}{'    '}{metrics['test']['f1']:.4f}{'    '}{metrics['roc_auc']:.4f}{'    '}{metrics['pr_auc']:.4f}{'    '}{metrics['training_time']:.2f}")
+        print(f"{model_name:<12}{metrics['train']['accuracy']:.4f}{'    '}{metrics['test']['accuracy']:.4f}{'    '}{metrics['test']['precision']:.4f}{'      '}{metrics['test']['recall']:.4f}{'    '}{metrics['test']['f1']:.4f}{'    '}{metrics['roc_auc']:.4f}{'    '}{metrics['pr_auc']:.4f}{'    '}{metrics['training_time']:.2f}")
     
     print("="*80)
     
-    # 绘制所有模型的ROC曲线比较
+    # Plot ROC curve comparison for all models
     plt.figure(figsize=(12, 10))
     
     for model_name, model in models.items():
-        # 获取测试集预测
+        # Get test set predictions
         test_labels, test_preds, test_probs = get_predictions(model, test_loader)
         
-        # 计算ROC曲线
+        # Calculate ROC curve
         fpr, tpr, _ = roc_curve(test_labels, test_probs[:, 1])
         roc_auc = auc(fpr, tpr)
         
-        # 绘制ROC曲线
+        # Plot ROC curve
         plt.plot(fpr, tpr, lw=2, label=f'{model_name} (area = {roc_auc:.2f})')
     
     plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
@@ -512,7 +512,7 @@ def main():
     plt.legend(loc='lower right')
     plt.savefig('model_results/all_models_roc_comparison.png')
     
-    # 绘制所有模型的准确率比较
+    # Plot accuracy comparison for all models
     plt.figure(figsize=(12, 6))
     
     model_names = list(all_results.keys())
@@ -531,7 +531,7 @@ def main():
     plt.legend()
     plt.ylim([0, 1])
     
-    # 在柱状图上添加数值标签
+    # Add numerical labels on bar chart
     for i, v in enumerate(train_accs):
         plt.text(i - width/2, v + 0.02, f'{v:.3f}', ha='center')
     
@@ -540,8 +540,8 @@ def main():
     
     plt.savefig('model_results/all_models_accuracy_comparison.png')
     
-    print("\n所有图表和模型已保存到 model_results 目录")
-    print("评估完成!")
+    print("\nAll charts and models have been saved to model_results directory")
+    print("Evaluation completed!")
 
 if __name__ == "__main__":
     main()

@@ -156,6 +156,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 We thank the Baidu PaddlePaddle team for providing free online GPU resources and training courses. We also acknowledge the authors of the original datasets used in this study.
 
-## Contact
-
-For questions or collaborations, please open an issue on this repository or contact the corresponding author at [email@institution.edu].

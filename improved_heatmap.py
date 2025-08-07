@@ -1,9 +1,9 @@
 """
-改进的热力图可视化
-解决审稿人对Figure 2中热力图的疑问
-- 清晰解释基因选择方法
-- 明确标注的含义
-- 增加聚类分析以支持标注
+Improved Heatmap Visualization
+Addresses reviewer concerns about Figure 2 heatmap
+- Clear explanation of gene selection methods
+- Explicit annotation meanings
+- Added clustering analysis to support annotations
 """
 import pandas as pd
 import numpy as np
@@ -17,19 +17,19 @@ from scipy.stats import ttest_ind
 
 def select_informative_genes(data, label, n_genes=20, method='statistical'):
     """
-    选择最具信息量的基因
+    Select the most informative genes
     
-    参数:
-    - data: 基因表达矩阵 (样本 × 基因)
-    - label: 样本标签
-    - n_genes: 要选择的基因数量
-    - method: 选择方法 ('statistical', 'variance', 'pca')
+    Parameters:
+    - data: Gene expression matrix (samples × genes)
+    - label: Sample labels
+    - n_genes: Number of genes to select
+    - method: Selection method ('statistical', 'variance', 'pca')
     
-    返回:
-    - 选择的基因列表及其重要性分数
+    Returns:
+    - List of selected genes and their importance scores
     """
     if method == 'statistical':
-        # 使用t检验找出两组间差异显著的基因
+        # Use t-test to find genes with significant differences between two groups
         p_values = []
         fold_changes = []
         gene_names = data.columns
@@ -38,20 +38,20 @@ def select_informative_genes(data, label, n_genes=20, method='statistical'):
             group1 = data[gene][label == 0]
             group2 = data[gene][label == 1]
             
-            # 检查数据是否足够
+            # Check if data is sufficient
             if len(group1) < 2 or len(group2) < 2:
                 p_values.append(1.0)
                 fold_changes.append(0.0)
                 continue
                 
-            # t检验
+            # t-test
             t_stat, p_value = ttest_ind(group1, group2, equal_var=False)
             p_values.append(p_value)
             
-            # 计算fold change
+            # Calculate fold change
             mean1 = group1.mean()
             mean2 = group2.mean()
-            # 避免除以零
+            # Avoid division by zero
             if mean1 == 0:
                 mean1 = 1e-10
             if mean2 == 0:
@@ -59,159 +59,159 @@ def select_informative_genes(data, label, n_genes=20, method='statistical'):
             fc = np.log2(mean2 / mean1)
             fold_changes.append(fc)
         
-        # 合并结果
+        # Merge results
         gene_stats = pd.DataFrame({
             'Gene': gene_names,
             'P_Value': p_values,
             'Log2FC': fold_changes
         })
         
-        # 计算调整后的p值
-        gene_stats['Adj_P_Value'] = gene_stats['P_Value'] * len(gene_names)  # 简单的Bonferroni校正
+        # Calculate adjusted p-values
+        gene_stats['Adj_P_Value'] = gene_stats['P_Value'] * len(gene_names)  # Simple Bonferroni correction
         gene_stats['Adj_P_Value'] = gene_stats['Adj_P_Value'].clip(upper=1.0)
         
-        # 计算综合得分 (-log10(p) * |log2FC|)
+        # Calculate composite score (-log10(p) * |log2FC|)
         gene_stats['Score'] = -np.log10(gene_stats['P_Value']) * np.abs(gene_stats['Log2FC'])
         
-        # 根据得分排序并选择前n个
+        # Sort by score and select top n genes
         top_genes = gene_stats.sort_values('Score', ascending=False).head(n_genes)
         
         return top_genes['Gene'].tolist(), top_genes
     
     elif method == 'variance':
-        # 基于方差选择
+        # Variance-based selection
         gene_var = data.var()
         top_genes = gene_var.sort_values(ascending=False).head(n_genes)
         return top_genes.index.tolist(), pd.DataFrame({'Gene': top_genes.index, 'Score': top_genes.values})
     
     elif method == 'pca':
-        # 基于PCA载荷选择
+        # PCA loading-based selection
         scaler = StandardScaler()
         scaled_data = scaler.fit_transform(data)
         pca = PCA(n_components=2)
         pca.fit(scaled_data)
         
-        # 获取第一主成分的载荷
+        # Get loadings of the first principal component
         loadings = pd.DataFrame({
             'Gene': data.columns,
             'PC1_loading': pca.components_[0],
             'PC2_loading': pca.components_[1],
         })
         
-        # 计算载荷的绝对值和
+        # Calculate sum of absolute loadings
         loadings['Score'] = np.abs(loadings['PC1_loading']) + np.abs(loadings['PC2_loading'])
         
-        # 选择载荷最高的基因
+        # Select genes with highest loadings
         top_genes = loadings.sort_values('Score', ascending=False).head(n_genes)
         
         return top_genes['Gene'].tolist(), top_genes
     
     else:
-        raise ValueError(f"不支持的方法: {method}")
+        raise ValueError(f"Unsupported method: {method}")
 
 def identify_gene_clusters(data, n_clusters=3, method='kmeans'):
     """
-    对基因进行聚类分析
+    Perform clustering analysis on genes
     
-    参数:
-    - data: 基因表达矩阵 (转置后，基因 × 样本)
-    - n_clusters: 聚类数量
-    - method: 聚类方法 ('kmeans', 'hierarchical')
+    Parameters:
+    - data: Gene expression matrix (transposed, genes × samples)
+    - n_clusters: Number of clusters
+    - method: Clustering method ('kmeans', 'hierarchical')
     
-    返回:
-    - 基因聚类标签
+    Returns:
+    - Gene cluster labels
     """
     if method == 'kmeans':
-        # K-means聚类
+        # K-means clustering
         kmeans = KMeans(n_clusters=n_clusters, random_state=42)
         gene_clusters = kmeans.fit_predict(data)
         return gene_clusters
     
     elif method == 'hierarchical':
-        # 层次聚类
+        # Hierarchical clustering
         hc = AgglomerativeClustering(n_clusters=n_clusters)
         gene_clusters = hc.fit_predict(data)
         return gene_clusters
     
     else:
-        raise ValueError(f"不支持的方法: {method}")
+        raise ValueError(f"Unsupported method: {method}")
 
 def identify_sample_clusters(data, n_clusters=2, method='kmeans'):
     """
-    对样本进行聚类分析
+    Perform clustering analysis on samples
     
-    参数:
-    - data: 基因表达矩阵 (样本 × 基因)
-    - n_clusters: 聚类数量
-    - method: 聚类方法 ('kmeans', 'hierarchical')
+    Parameters:
+    - data: Gene expression matrix (samples × genes)
+    - n_clusters: Number of clusters
+    - method: Clustering method ('kmeans', 'hierarchical')
     
-    返回:
-    - 样本聚类标签
+    Returns:
+    - Sample cluster labels
     """
     if method == 'kmeans':
-        # K-means聚类
+        # K-means clustering
         kmeans = KMeans(n_clusters=n_clusters, random_state=42)
         sample_clusters = kmeans.fit_predict(data)
         return sample_clusters
     
     elif method == 'hierarchical':
-        # 层次聚类
+        # Hierarchical clustering
         hc = AgglomerativeClustering(n_clusters=n_clusters)
         sample_clusters = hc.fit_predict(data)
         return sample_clusters
     
     else:
-        raise ValueError(f"不支持的方法: {method}")
+        raise ValueError(f"Unsupported method: {method}")
 
 def plot_improved_heatmap(data1, data2=None, labels=None, title1="Gene Expression Heatmap 1", 
                           title2="Gene Expression Heatmap 2", gene_selection_method='statistical', 
                           n_genes=20, cluster_genes=True, cluster_samples=True, 
                           annotation=True, save_path=None, figsize=(30, 15)):
     """
-    绘制改进的热力图，包括基因选择、聚类和明确的标注
+    Plot improved heatmap with gene selection, clustering, and clear annotations
     
-    参数:
-    - data1: 第一个数据集
-    - data2: 第二个数据集 (可选)
-    - labels: 样本标签
-    - title1, title2: 热力图标题
-    - gene_selection_method: 基因选择方法
-    - n_genes: 要显示的基因数量
-    - cluster_genes: 是否对基因进行聚类
-    - cluster_samples: 是否对样本进行聚类
-    - annotation: 是否添加注释
-    - save_path: 保存路径
-    - figsize: 图像大小
+    Parameters:
+    - data1: First dataset
+    - data2: Second dataset (optional)
+    - labels: Sample labels
+    - title1, title2: Heatmap titles
+    - gene_selection_method: Gene selection method
+    - n_genes: Number of genes to display
+    - cluster_genes: Whether to cluster genes
+    - cluster_samples: Whether to cluster samples
+    - annotation: Whether to add annotations
+    - save_path: Save path
+    - figsize: Figure size
     """
-    # 确保数据是DataFrame
+    # Ensure data is DataFrame
     if not isinstance(data1, pd.DataFrame):
         data1 = pd.DataFrame(data1)
     
     if data2 is not None and not isinstance(data2, pd.DataFrame):
         data2 = pd.DataFrame(data2)
     
-    # 如果没有提供标签，创建全零标签
+    # If no labels provided, create all-zero labels
     if labels is None:
         labels = np.zeros(len(data1))
     
-    # 选择最具信息量的基因
+    # Select most informative genes
     selected_genes, gene_stats = select_informative_genes(
         data1, labels, n_genes=n_genes, method=gene_selection_method
     )
     
-    # 提取选择的基因
+    # Extract selected genes
     data1_selected = data1[selected_genes]
     
-    # 如果有第二个数据集，也提取相同的基因
+    # If there's a second dataset, extract the same genes
     if data2 is not None:
         data2_selected = data2[selected_genes]
     
-    # 对基因和样本进行聚类
+    # Perform clustering on genes and samples
     if cluster_genes:
-        # 转置数据以便对基因聚类
+        # Transpose data for gene clustering
         gene_clusters = identify_gene_clusters(data1_selected.T, n_clusters=3, method='hierarchical')
         
-        # 重新排序基因
+        # Reorder genes
         gene_order = np.argsort(gene_clusters)
         selected_genes = [selected_genes[i] for i in gene_order]
         data1_selected = data1_selected[selected_genes]
@@ -220,24 +220,24 @@ def plot_improved_heatmap(data1, data2=None, labels=None, title1="Gene Expressio
             data2_selected = data2_selected[selected_genes]
     
     if cluster_samples:
-        # 对样本聚类
+        # Cluster samples
         sample_clusters = identify_sample_clusters(data1_selected, n_clusters=2, method='hierarchical')
         
-        # 重新排序样本
+        # Reorder samples
         sample_order = np.argsort(sample_clusters)
         data1_selected = data1_selected.iloc[sample_order]
         
         if data2 is not None and len(data2_selected) == len(data1_selected):
             data2_selected = data2_selected.iloc[sample_order]
     
-    # 创建画布和子图
+    # Create canvas and subplots
     if data2 is not None:
         fig, axes = plt.subplots(1, 2, figsize=figsize)
     else:
         fig, ax = plt.subplots(figsize=(figsize[0]//2, figsize[1]))
         axes = [ax]
     
-    # 绘制第一张热力图
+    # Plot first heatmap
     sns.heatmap(
         data1_selected,
         cmap="mako",
@@ -258,7 +258,7 @@ def plot_improved_heatmap(data1, data2=None, labels=None, title1="Gene Expressio
     # 设置刻度标签
     axes[0].set_xticklabels(selected_genes, rotation=90, fontsize=10, horizontalalignment='center')
     
-    # 隐藏部分标签（每隔n个显示一个）
+    # Hide some labels (show every nth label)
     skip = max(1, len(selected_genes) // 10)
     for i, label in enumerate(axes[0].get_xticklabels()):
         if i % skip != 0:
@@ -269,9 +269,9 @@ def plot_improved_heatmap(data1, data2=None, labels=None, title1="Gene Expressio
     cbar1.ax.tick_params(labelsize=12)
     cbar1.set_label('Expression Level', fontsize=14, rotation=270, labelpad=20, fontweight='bold')
     
-    # 基于聚类添加注释
+    # Add annotations based on clustering
     if annotation and cluster_genes:
-        # 找出基因聚类的边界
+        # Find gene cluster boundaries
         cluster_boundaries = []
         prev_cluster = gene_clusters[gene_order[0]]
         
@@ -281,11 +281,11 @@ def plot_improved_heatmap(data1, data2=None, labels=None, title1="Gene Expressio
                 cluster_boundaries.append(i)
                 prev_cluster = curr_cluster
         
-        # 添加垂直线标示不同基因簇
+        # Add vertical lines to mark different gene clusters
         for boundary in cluster_boundaries:
             axes[0].axvline(x=boundary, color='white', linestyle='-', linewidth=2)
         
-        # 标记重要区域（假设第一个簇是重要区域）
+        # Mark important regions (assume first cluster is important region)
         # 这里我们可以基于基因得分确定最重要的区域
         important_genes = gene_stats.sort_values('Score', ascending=False).head(5)['Gene'].tolist()
         important_indices = [selected_genes.index(gene) for gene in important_genes if gene in selected_genes]

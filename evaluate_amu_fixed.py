@@ -1,6 +1,6 @@
 """
-AMU模型单独评估脚本 - 修正版
-使用用户提供的确切AMU模型结构
+AMU Model Standalone Evaluation Script - Fixed Version
+Using the exact AMU model structure provided by the user
 """
 import pandas as pd
 import numpy as np
@@ -14,41 +14,41 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 from paddle.regularizer import L2Decay
 
-# 设置随机种子以确保结果可重现
+# Set random seed to ensure reproducible results
 np.random.seed(42)
 paddle.seed(42)
 
-print("开始加载数据...")
+print("Starting data loading...")
 # 加载数据
 try:
     data = pd.read_csv('logfourupsample.csv')
-    print(f"成功加载数据，形状: {data.shape}")
+    print(f"Successfully loaded data, shape: {data.shape}")
 except Exception as e:
-    print(f"加载数据时出错: {e}")
+    print(f"Error loading data: {e}")
     exit(1)
 
-# 分离特征和标签
+# Separate features and labels
 if 'target' in data.columns:
     X, y = data.iloc[:, :-1], data.iloc[:, -1]
 else:
-    # 假设最后一列是标签
+    # Assume last column is the label
     X, y = data.iloc[:, :-1], data.iloc[:, -1]
 
-print(f"特征形状: {X.shape}, 标签形状: {y.shape}")
-print(f"标签分布: {y.value_counts().to_dict()}")
+print(f"Features shape: {X.shape}, Labels shape: {y.shape}")
+print(f"Label distribution: {y.value_counts().to_dict()}")
 
-# 确保特征数量为160，否则调整模型
+# Ensure feature count is 160, otherwise adjust model
 num_features = X.shape[1]
-print(f"特征数量: {num_features}")
+print(f"Number of features: {num_features}")
 
-# 划分训练集和测试集
+# Split training and test sets
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 
-print(f"训练集形状: {X_train.shape}, 测试集形状: {X_test.shape}")
+print(f"Training set shape: {X_train.shape}, Test set shape: {X_test.shape}")
 
-# 定义AMU模型 - 使用用户提供的确切代码
+# Define AMU model - using exact code provided by user
 class Atten_model(nn.Layer):
     def __init__(self, num_features=160):
         super(Atten_model, self).__init__()  # [-1,1,160]
@@ -106,7 +106,7 @@ class Atten_model(nn.Layer):
         x = self.softmax(x)
         return x
 
-# 创建数据集
+# Create dataset
 class SimpleDataset(paddle.io.Dataset):
     def __init__(self, features, labels=None, is_test=False):
         self.features = features
@@ -123,14 +123,14 @@ class SimpleDataset(paddle.io.Dataset):
     def __len__(self):
         return len(self.features)
 
-print("准备数据集...")
-# 转换数据为Paddle张量
+print("Preparing datasets...")
+# Convert data to Paddle tensors
 train_features = paddle.to_tensor(X_train.values.astype('float32'))
 train_labels = paddle.to_tensor(y_train.values.astype('int64'))
 test_features = paddle.to_tensor(X_test.values.astype('float32'))
 test_labels = paddle.to_tensor(y_test.values.astype('int64'))
 
-# 创建数据加载器
+# Create data loaders
 batch_size = 32
 train_dataset = SimpleDataset(train_features, train_labels)
 train_loader = paddle.io.DataLoader(
@@ -146,13 +146,13 @@ test_loader = paddle.io.DataLoader(
     shuffle=False
 )
 
-# 创建模型实例
-print(f"创建AMU模型 (特征数量: {num_features})...")
+# Create model instance
+print(f"Creating AMU model (number of features: {num_features})...")
 model = Atten_model(num_features=num_features)
 
-# 定义优化器和损失函数
+# Define optimizer and loss function
 learning_rate = 0.0001
-print(f"使用学习率: {learning_rate}")
+print(f"Using learning rate: {learning_rate}")
 optimizer = paddle.optimizer.Adam(
     learning_rate=learning_rate,
     parameters=model.parameters(),
@@ -160,14 +160,14 @@ optimizer = paddle.optimizer.Adam(
 )
 loss_fn = nn.CrossEntropyLoss()
 
-# 训练模型
+# Train model
 epochs = 100
-print(f"开始训练AMU模型，训练轮数: {epochs}")
+print(f"Starting AMU model training, number of epochs: {epochs}")
 
-# 对训练集做一次标签分布统计
-print(f"训练集标签分布: {pd.Series(y_train).value_counts().to_dict()}")
+# Perform label distribution statistics on training set
+print(f"Training set label distribution: {pd.Series(y_train).value_counts().to_dict()}")
 
-# 定义评估函数
+# Define evaluation function
 def evaluate_model(model, data_loader, prefix=""):
     model.eval()
     all_preds = []
@@ -184,23 +184,23 @@ def evaluate_model(model, data_loader, prefix=""):
                 
                 all_preds.extend(preds.numpy())
                 all_labels.extend(y.numpy())
-                all_probs.extend(probs.numpy()[:, 1])  # 保存正类的概率
+                all_probs.extend(probs.numpy()[:, 1])  # Save positive class probabilities
     
     if all_labels:
         acc = accuracy_score(all_labels, all_preds)
-        # 计算混淆矩阵
+        # Calculate confusion matrix
         cm = confusion_matrix(all_labels, all_preds)
-        # 计算其他指标
+        # Calculate other metrics
         precision = precision_score(all_labels, all_preds, zero_division=0)
         recall = recall_score(all_labels, all_preds, zero_division=0)
         f1 = f1_score(all_labels, all_preds, zero_division=0)
         
-        print(f"{prefix} 评估结果:")
-        print(f"准确率: {acc:.4f}")
-        print(f"精确率: {precision:.4f}")
-        print(f"召回率: {recall:.4f}")
-        print(f"F1分数: {f1:.4f}")
-        print(f"混淆矩阵:\n{cm}")
+        print(f"{prefix} Evaluation results:")
+        print(f"Accuracy: {acc:.4f}")
+        print(f"Precision: {precision:.4f}")
+        print(f"Recall: {recall:.4f}")
+        print(f"F1 score: {f1:.4f}")
+        print(f"Confusion matrix:\n{cm}")
         
         return {
             'accuracy': acc,
@@ -214,14 +214,14 @@ def evaluate_model(model, data_loader, prefix=""):
         }
     return None
 
-# 保存训练过程中的指标
+# Save metrics during training process
 history = {
     'train_loss': [],
     'train_acc': [],
     'val_metrics': []
 }
 
-# 开始训练循环
+# Start training loop
 for epoch in range(epochs):
     model.train()
     total_loss = 0
@@ -233,77 +233,77 @@ for epoch in range(epochs):
     for batch_id, data in enumerate(train_loader()):
         x_data, y_data = data
         
-        # 前向传播
+        # Forward pass
         logits = model(x_data)
         loss = loss_fn(logits, y_data)
         
-        # 反向传播
+        # Backward pass
         loss.backward()
         optimizer.step()
         optimizer.clear_grad()
         
-        # 计算准确率 - 使用argmax直接获取预测类别
+        # Calculate accuracy - use argmax to directly get predicted classes
         probs = F.softmax(logits, axis=1)
         preds = paddle.argmax(probs, axis=1)
         
-        # 收集预测结果用于统计
+        # Collect prediction results for statistics
         all_preds.extend(preds.numpy())
         all_labels.extend(y_data.numpy())
         
-        # 统计当前批次的准确率
+        # Calculate accuracy for current batch
         batch_correct = (preds == y_data).numpy().sum()
         correct += batch_correct
         total += len(y_data)
         total_loss += float(loss)
     
-    # 计算训练集准确率
+    # Calculate training set accuracy
     train_acc = correct / total
     avg_loss = total_loss / len(train_loader)
     
-    # 保存训练指标
+    # Save training metrics
     history['train_loss'].append(avg_loss)
     history['train_acc'].append(train_acc)
     
-    # 对验证集进行评估(每10轮或最后一轮)
+    # Evaluate on validation set (every 10 epochs or last epoch)
     if (epoch + 1) % 10 == 0 or epoch == epochs - 1:
         val_metrics = evaluate_model(model, test_loader, prefix=f"Epoch {epoch+1}")
         history['val_metrics'].append(val_metrics)
         
-        # 输出训练集预测分布
+        # Output training set prediction distribution
         unique, counts = np.unique(all_preds, return_counts=True)
         pred_dist = dict(zip(unique, counts))
-        print(f"训练集预测分布: {pred_dist}")
+        print(f"Training set prediction distribution: {pred_dist}")
         
-        # 输出混淆矩阵
+        # Output confusion matrix
         cm = confusion_matrix(all_labels, all_preds)
-        print(f"训练集混淆矩阵:\n{cm}")
+        print(f"Training set confusion matrix:\n{cm}")
     
-    # 每轮次输出基本训练信息
+    # Output basic training information for each epoch
     print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}, Acc: {train_acc:.4f}")
 
-# 最终评估
-print("\n开始最终评估AMU模型...")
-final_metrics = evaluate_model(model, test_loader, prefix="最终测试集")
+# Final evaluation
+print("\nStarting final evaluation of AMU model...")
+final_metrics = evaluate_model(model, test_loader, prefix="Final test set")
 
-# 绘制训练过程中的损失和准确率
+# Plot training curves
 plt.figure(figsize=(12, 5))
 plt.subplot(1, 2, 1)
 plt.plot(history['train_loss'])
-plt.title('训练损失')
+plt.title('Training Loss')
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
 
 plt.subplot(1, 2, 2)
 plt.plot(history['train_acc'])
-plt.title('训练准确率')
+plt.title('Training Accuracy')
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
 plt.savefig('amu_training_history.png')
-print("训练历史图已保存为 amu_training_history.png")
+print("Training history plot saved as amu_training_history.png")
 
-# 如果有足够的评估数据，绘制ROC曲线
+# If there is enough evaluation data, plot ROC curve
 if final_metrics and len(np.unique(final_metrics['labels'])) > 1:
-    # 计算ROC曲线
+    # Calculate ROC curve
     fpr, tpr, _ = roc_curve(final_metrics['labels'], final_metrics['probabilities'])
     roc_auc = roc_auc_score(final_metrics['labels'], final_metrics['probabilities'])
     
@@ -317,9 +317,9 @@ if final_metrics and len(np.unique(final_metrics['labels'])) > 1:
     plt.title('AMU Model - Receiver Operating Characteristic')
     plt.legend(loc="lower right")
     plt.savefig('amu_roc_curve.png')
-    print("ROC曲线已保存为 amu_roc_curve.png")
+    print("ROC curve saved as amu_roc_curve.png")
     
-    # 计算PR曲线
+    # Calculate PR curve
     precision_curve, recall_curve, _ = precision_recall_curve(
         final_metrics['labels'], final_metrics['probabilities']
     )
@@ -334,16 +334,16 @@ if final_metrics and len(np.unique(final_metrics['labels'])) > 1:
     plt.title('AMU Model - Precision-Recall Curve')
     plt.legend(loc="lower left")
     plt.savefig('amu_pr_curve.png')
-    print("PR曲线已保存为 amu_pr_curve.png")
+    print("PR curve saved as amu_pr_curve.png")
 
-# 尝试保存模型
+# Try to save model
 try:
-    # 创建PaddlePaddle模型对象
+    # Create PaddlePaddle model object
     paddle_model = paddle.Model(model)
-    # 保存模型
+    # Save model
     paddle_model.save('amu_model')
-    print("模型已保存为 amu_model")
+    print("Model saved as amu_model")
 except Exception as e:
-    print(f"保存模型时出错: {e}")
+    print(f"Error saving model: {e}")
 
-print("\nAMU模型评估完成!")
+print("\nAMU model evaluation completed!")

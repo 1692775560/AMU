@@ -1,5 +1,5 @@
 """
-AMU模型单独评估脚本
+AMU Model Standalone Evaluation Script
 """
 import pandas as pd
 import numpy as np
@@ -14,33 +14,33 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 from paddle.regularizer import L2Decay
 
-print("开始加载数据...")
+print("Starting data loading...")
 # 加载数据
 try:
     data = pd.read_csv('logfourupsample.csv')
-    print(f"成功加载数据，形状: {data.shape}")
+    print(f"Successfully loaded data, shape: {data.shape}")
 except Exception as e:
-    print(f"加载数据时出错: {e}")
+    print(f"Error loading data: {e}")
     exit(1)
 
-# 分离特征和标签
+# Separate features and labels
 if 'target' in data.columns:
     X, y = data.iloc[:, :-1], data.iloc[:, -1]
 else:
-    # 假设最后一列是标签
+    # Assume last column is the label
     X, y = data.iloc[:, :-1], data.iloc[:, -1]
 
-print(f"特征形状: {X.shape}, 标签形状: {y.shape}")
-print(f"标签分布: {y.value_counts().to_dict()}")
+print(f"Features shape: {X.shape}, Labels shape: {y.shape}")
+print(f"Label distribution: {y.value_counts().to_dict()}")
 
-# 划分训练集和测试集
+# Split training and test sets
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 
-print(f"训练集形状: {X_train.shape}, 测试集形状: {X_test.shape}")
+print(f"Training set shape: {X_train.shape}, Test set shape: {X_test.shape}")
 
-# 定义AMU模型
+# Define AMU model
 class Atten_model(nn.Layer):
     def __init__(self):
         super(Atten_model, self).__init__()  # [-1,1,160]
@@ -90,7 +90,7 @@ class Atten_model(nn.Layer):
         x = self.softmax(x)
         return x
 
-# 创建数据集
+# Create dataset
 class SimpleDataset(paddle.io.Dataset):
     def __init__(self, features, labels=None):
         self.features = features
@@ -106,14 +106,14 @@ class SimpleDataset(paddle.io.Dataset):
     def __len__(self):
         return len(self.features)
 
-print("准备数据集...")
-# 转换数据为Paddle张量
+print("Preparing datasets...")
+# Convert data to Paddle tensors
 train_features = paddle.to_tensor(X_train.values.astype('float32'))
 train_labels = paddle.to_tensor(y_train.values.astype('int64'))
 test_features = paddle.to_tensor(X_test.values.astype('float32'))
 test_labels = paddle.to_tensor(y_test.values.astype('int64'))
 
-# 创建数据加载器
+# Create data loaders
 train_dataset = SimpleDataset(train_features, train_labels)
 train_loader = paddle.io.DataLoader(
     train_dataset,
@@ -128,37 +128,38 @@ test_loader = paddle.io.DataLoader(
     shuffle=False
 )
 
-# 创建模型实例
-print("创建AMU模型...")
+# Create model instance
+print("Create AMU model instance...")
 model = Atten_model()
 
-# 定义优化器和损失函数
-# 使用更高的学习率以加速收敛
+# Initialize optimizer and loss function
+# Use a higher learning rate to accelerate convergence
 optimizer = paddle.optimizer.Adam(
-    learning_rate=0.0001,  # 增加学习率
+    learning_rate=0.0001,  # Increase learning rate
     parameters=model.parameters(),
     weight_decay=paddle.regularizer.L2Decay(0.0001)
 )
 loss_fn = nn.CrossEntropyLoss()
 
-# 训练模型
-epochs = 100  # 增加到100轮训练
-print(f"开始训练AMU模型，训练轮数: {epochs}")
+# Set training parameters
+epochs = 100  # Increase to 100 training epochs
+print(f"Start training AMU model, number of epochs: {epochs}")
 
-# 对训练集做一次标签分布统计
-print(f"训练集标签分布: {pd.Series(y_train.values).value_counts().to_dict()}")
+# Perform label distribution statistics on the training set
+print(f"Training set label distribution: {pd.Series(y_train.values).value_counts().to_dict()}")
 
-# 定义定制的准确率计算函数
+# Define a custom accuracy calculation function
+# Define custom accuracy calculation function
 def calculate_accuracy(predictions, labels):
-    # 将logits转换为概率
+    # Convert logits to probabilities
     probs = F.softmax(predictions, axis=1)
-    # 获取预测类别
+    # Get predicted labels
     pred_labels = paddle.argmax(probs, axis=1)
-    # 计算准确率
+    # Calculate accuracy
     correct = (pred_labels == labels).numpy().sum()
     return correct / len(labels), pred_labels, probs
 
-# 保存每个轮次的准确率统计
+# Save accuracy statistics for each epoch
 epoch_accuracies = []
 model.train()
 
@@ -168,22 +169,22 @@ for epoch in range(epochs):
     epoch_total = 0
     batch_results = []
     
-    # 每10个轮次输出详细的模型预测信息
+    # Output detailed model prediction information every 10 epochs
     detailed_epoch = (epoch % 10 == 0)
     
     for batch_id, data in enumerate(train_loader()):
         x_data, y_data = data
         
-        # 前向传播
+        # Forward pass
         logits = model(x_data)
         loss = loss_fn(logits, y_data)
         
-        # 反向传播
+        # Backward pass
         loss.backward()
         optimizer.step()
         optimizer.clear_grad()
         
-        # 计算准确率
+        # Calculate accuracy
         batch_acc, pred_labels, probs = calculate_accuracy(logits, y_data)
         batch_results.append({
             'batch_id': batch_id,
@@ -192,22 +193,22 @@ for epoch in range(epochs):
             'pred_distribution': np.bincount(pred_labels.numpy(), minlength=2).tolist()
         })
         
-        # 累计正确预测数量
+        # Accumulate correct predictions
         epoch_correct += (pred_labels == y_data).numpy().sum()
         epoch_total += len(y_data)
         total_loss += float(loss)
     
-    # 计算并存储该轮次的准确率
+    # Calculate and store accuracy for this epoch
     epoch_acc = epoch_correct / epoch_total
     epoch_accuracies.append(epoch_acc)
     
-    # 打印每个轮次的结果
+    # Print results for each epoch
     pred_distribution = np.sum([b['pred_distribution'] for b in batch_results], axis=0)
     print(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss/len(train_loader):.4f}, Acc: {epoch_acc:.4f}, Pred Dist: {pred_distribution}")
     
-    # 每10个轮次输出详细信息
+    # Output detailed information every 10 epochs
     if detailed_epoch:
-        # 在训练集上进行完整的验证
+        # Perform complete validation on training set
         model.eval()
         all_train_preds = []
         all_train_labels = []
@@ -220,16 +221,16 @@ for epoch in range(epochs):
                 all_train_preds.extend(preds.numpy())
                 all_train_labels.extend(y.numpy())
         
-        # 计算回顾性能并显示混淆矩阵
+        # Calculate retrospective performance and display confusion matrix
         train_acc = np.mean(np.array(all_train_preds) == np.array(all_train_labels))
         cm = confusion_matrix(all_train_labels, all_train_preds)
-        print(f"\n训练集完整评估 - 准确率: {train_acc:.4f}")
-        print(f"混淆矩阵:\n{cm}\n")
+        print(f"\nComplete training set evaluation - Accuracy: {train_acc:.4f}")
+        print(f"Confusion matrix:\n{cm}\n")
         model.train()
 
 
-# 评估模型
-print("\n开始评估AMU模型...")
+# Evaluate model
+print("\nStarting AMU model evaluation...")
 model.eval()
 y_probs = []
 y_true = []
@@ -238,41 +239,41 @@ with paddle.no_grad():
     for batch_id, data in enumerate(test_loader()):
         x_data, y_data = data
         
-        # 前向传播
+        # Forward pass
         logits = model(x_data)
         probs = F.softmax(logits, axis=1)
         
-        # 收集预测概率和真实标签
-        y_probs.append(probs.numpy()[:, 1])  # 取正类的概率
+        # Collect prediction probabilities and true labels
+        y_probs.append(probs.numpy()[:, 1])  # Take positive class probability
         y_true.append(y_data.numpy())
 
-# 合并所有批次的预测结果
+# Merge prediction results from all batches
 y_prob = np.concatenate(y_probs)
 y_true = np.concatenate(y_true)
 
-# 根据阈值获取预测标签
+# Get predicted labels based on threshold
 threshold = 0.5
 y_pred = (y_prob >= threshold).astype(int)
 
-# 计算评估指标
+# Calculate evaluation metrics
 acc = accuracy_score(y_true, y_pred)
 precision = precision_score(y_true, y_pred)
 recall = recall_score(y_true, y_pred)
 f1 = f1_score(y_true, y_pred)
 auc = roc_auc_score(y_true, y_prob)
 
-# 计算混淆矩阵
+# Calculate confusion matrix
 cm = confusion_matrix(y_true, y_pred)
 
-# 计算ROC曲线
+# Calculate ROC curve
 fpr, tpr, _ = roc_curve(y_true, y_prob)
 
-# 计算PR曲线
+# Calculate PR curve
 precision_curve, recall_curve, _ = precision_recall_curve(y_true, y_prob)
 ap = average_precision_score(y_true, y_prob)
 
-# 打印评估结果
-print("\nAMU模型评估结果:")
+# Print evaluation results
+print("\nAMU Model Evaluation Results:")
 print(f"Accuracy: {acc:.4f}")
 print(f"Precision: {precision:.4f}")
 print(f"Recall: {recall:.4f}")
@@ -282,7 +283,7 @@ print(f"Average Precision: {ap:.4f}")
 print("Confusion Matrix:")
 print(cm)
 
-# 绘制ROC曲线
+# Plot ROC curve
 plt.figure(figsize=(10, 8))
 plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area = {auc:.2f})')
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
@@ -293,9 +294,9 @@ plt.ylabel('True Positive Rate')
 plt.title('AMU Model - Receiver Operating Characteristic')
 plt.legend(loc="lower right")
 plt.savefig('amu_roc_curve.png')
-print("ROC曲线已保存为 amu_roc_curve.png")
+print("ROC curve saved as amu_roc_curve.png")
 
-# 绘制PR曲线
+# Plot PR curve
 plt.figure(figsize=(10, 8))
 plt.plot(recall_curve, precision_curve, color='blue', lw=2, label=f'PR curve (AP = {ap:.2f})')
 plt.xlim([0.0, 1.0])
@@ -305,16 +306,16 @@ plt.ylabel('Precision')
 plt.title('AMU Model - Precision-Recall Curve')
 plt.legend(loc="lower left")
 plt.savefig('amu_pr_curve.png')
-print("PR曲线已保存为 amu_pr_curve.png")
+print("PR curve saved as amu_pr_curve.png")
 
-# 尝试保存模型
+# Try to save model
 try:
-    # 创建PaddlePaddle模型对象
+    # Create PaddlePaddle model object
     paddle_model = paddle.Model(model)
-    # 保存模型
+    # Save model
     paddle_model.save('amu_model')
-    print("模型已保存为 amu_model")
+    print("Model saved as amu_model")
 except Exception as e:
-    print(f"保存模型时出错: {e}")
+    print(f"Error saving model: {e}")
 
-print("\nAMU模型评估完成!")
+print("\nAMU model evaluation completed!")
